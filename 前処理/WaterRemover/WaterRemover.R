@@ -57,6 +57,7 @@ WaterRemover <- function(filename="./",xmin=-20, xmax=20, outputname="output.pdb
         D <- combine.select(D,A,operator="&")
     }
 
+    message("あともう少しです")
     D <- trim.pdb(pdb,D)
        
     write.pdb(D, outputname)
