@@ -1,3 +1,8 @@
+
+# パッケージの読み込み
+library(bio3d) 
+library(dplyr)
+
 # pdbを読み込んである特定の領域よりも外にある水分子を消してpdbを出力するRの関数。
 # 適当に作ったのでゲキ重です。計算終わるまでに1min前後は覚悟してね！
 # 2018.09.26. Kohei Noda (TBlab. Nagoya Univ.) made.
@@ -6,10 +11,6 @@ WaterRemover <- function(filename="./",xmin=-20, xmax=20, outputname="output.pdb
         message("xmax should be greater than xmin")
         return(201)
     }
-    
-    # パッケージの読み込み
-    library(bio3d) 
-    library(dplyr)
     
     # pdbの読み込み
     pdb <- read.pdb(filename)
@@ -61,4 +62,24 @@ WaterRemover <- function(filename="./",xmin=-20, xmax=20, outputname="output.pdb
     D <- trim.pdb(pdb,D)
        
     write.pdb(D, outputname)
+}
+
+
+#BoxSizeの検討のための関数。ボックスの最大最小座標を教えてくれる。
+BoxSize <- function(filename="./"){
+
+
+    pdb <- read.pdb(filename)
+
+    if(!is.pdb(pdb)){
+        message("please check filename! This file is not pdb.")
+        return(201)
+    } 
+
+    # resno のアレンジ
+    pdb.atom <- pdb$atom
+
+    message("xは",min(pdb.atom$x),"から",max(pdb.atom$x))
+    message("yは",min(pdb.atom$y),"から",max(pdb.atom$y))
+    message("zは",min(pdb.atom$z),"から",max(pdb.atom$z))
 }
