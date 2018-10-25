@@ -1,4 +1,4 @@
-CountNearestResidues <- function(filename, output=T, visualization=F){
+CountNearestResidues <- function(filename, output=T, outfilename="list.dat",visualization=F){
     # 読み込み
     library(dplyr)
     message("データの読み込み中")
@@ -50,7 +50,7 @@ CountNearestResidues <- function(filename, output=T, visualization=F){
     
     #出力
     if(output==T){
-        write.table(Df_,"./list.dat",quote=F,row.names=F,col.names=F)
+        write.table(Df_,outfilename,quote=F,row.names=F,col.names=F)
     }
     
     message("終了")
