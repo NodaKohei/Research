@@ -5,17 +5,19 @@ module parameter
     ! 系のパラメータ
     integer, parameter :: NN = 108 ! 粒子数
     double precision, parameter :: length = 4.762d0 ! 箱のサイズ
-    double precision, parameter :: T = 1.0d0 ! 温度
+    double precision, parameter :: T = 3.0d0 ! 温度
 
     ! ちっこいパラメータ
-    double precision, parameter :: eta = 0.09d0 ! displacement coefficient
+    double precision, parameter :: eta_0 = 0.1d0 ! displacement coefficient
+    double precision, parameter :: acp_value = 0.3 ! 受託率の目標値（これに向けて自動的にetaが変化していく）
     integer, parameter :: seed = 1 ! seed of random number
     integer, parameter :: MC_sweeps = 1000 ! モンテカルロスウィープ数 １スウィープはNNとする
 
 
     ! 入出力に関するパラメータ(ファイル名)
+    integer, parameter :: output_freq = 10 ! 出力頻度(何sweepに一回座標を出力する?)
     character(64), parameter :: filepath = "./"
-    character(64), parameter :: filename = "sample.xyz"
+    character(64), parameter :: filename = "coordinate.xyz"
     
 
 end module parameter
@@ -30,7 +32,7 @@ program LJ_mc
     integer :: i, j
     integer :: cnt !count for acceptance ratio
     integer :: N_select
-    double precision :: l, r, E_pre, E_new, E_pair, dE
+    double precision :: l, r, E_pre, E_new, E_pair, dE, eta
 
     ! 粒子（構造体）
     type particle
@@ -47,13 +49,18 @@ program LJ_mc
     call sgrnd(seed)
     call initial(p)
 
+    ! 初期配置出力
     call output(p, filepath, filename)
+
+    ! 各種数値の初期設定
+    eta = eta_0
 
     ! 初期エネルギーの計算
     call energy(p, E_new)
 
     ! mainのループ
     do i = 1, MC_sweeps
+        cnt = 0 ! 受託率のために
         do j = 1, NN ! 1 sweepはNNとする
             ! エネルギーと座標をメモする
             E_pre = E_new
@@ -94,13 +101,22 @@ program LJ_mc
             end if
 
         end do
-        write(*,*) i, E_new
+        ! 基本情報の書き出し
+        write(*,*) i, E_new, cnt, (1 - real(cnt)/real(NN)), eta
+
+        ! eta修正
+        eta = eta * exp(1 - real(cnt)/real(NN) - acp_value)
+
+        ! 座標の書き出し
+        if (mod(i, output_freq) == 0) then 
+            call output(p, filepath, filename)
+        end if
     end do
         
 contains
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! 初期配置をランダムに作成するサブルーチン
 subroutine initial(p_init)
     use parameter
@@ -129,7 +145,7 @@ subroutine output(p, fpath, fname)
 
     ! 文字列を結合している TRIMでそれぞれの文字列の空白を消している
     name = TRIM(fpath)//TRIM(fname)
-    open(50, file = name, status = "replace")
+    open(50, file = name, position = "append")
     write(50,*) NN 
     write(50,*)
     do i = 1, NN
