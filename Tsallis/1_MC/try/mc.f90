@@ -10,7 +10,7 @@ module parameter
     ! ちっこいパラメータ
     double precision, parameter :: eta = 0.09d0 ! displacement coefficient
     integer, parameter :: seed = 1 ! seed of random number
-    integer, parameter :: MC_sweeps = 100 ! モンテカルロスウィープ数 １スウィープはNNとする
+    integer, parameter :: MC_sweeps = 1000 ! モンテカルロスウィープ数 １スウィープはNNとする
 
 
     ! 入出力に関するパラメータ(ファイル名)
@@ -28,8 +28,9 @@ program LJ_mc
     !!! 宣言 !!!
     ! 変数たち
     integer :: i, j
+    integer :: cnt !count for acceptance ratio
     integer :: N_select
-    double precision :: l, r, E_pre, E_new, E_pair
+    double precision :: l, r, E_pre, E_new, E_pair, dE
 
     ! 粒子（構造体）
     type particle
@@ -78,12 +79,27 @@ program LJ_mc
             p(N_select)%z = p(N_select)%z - length * l
 
             ! エネルギー変化の計算
+            call delta_energy(p, p_memo, N_select, dE)
 
-            write(*,*) (i-1)*NN+j, N_select
+            ! 候補のエネルギー
+            E_new = E_pre + dE
+
+            ! メトロポリス判定
+            if (dE > 0.0d0) then
+                if ( grnd() > dexp(-dE/T)) then
+                    p = p_memo
+                    E_new = E_pre
+                    cnt = cnt + 1
+                end if
+            end if
+
         end do
+        write(*,*) i, E_new
     end do
         
 contains
+
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! 初期配置をランダムに作成するサブルーチン
 subroutine initial(p_init)
@@ -160,11 +176,16 @@ subroutine energy_pair(r, E)
     double precision, intent(in) :: r ! diatance
     double precision, intent(out) :: E  ! Energy
 
-    E = 4.0d0 * (r**(-12.0d0) - r**(-6.0d0))
+    if (r == 0.0d0) then
+        E = 0.0d0
+    else
+        E = 4.0d0 * (r**(-12.0d0) - r**(-6.0d0))
+    end if
 
 end subroutine energy_pair
 
 ! 全系のエネルギーを計算するサブルーチン
+! Hamiltonianは H = ΣE_i + ΣE_ij(i < j)
 subroutine energy(p, E)
     use parameter
     implicit none
@@ -178,7 +199,7 @@ subroutine energy(p, E)
     E = 0.0d0
 
     ! エネルギー計算
-    do i = 1, NN 
+    do i = 1, NN - 1
         do j = i + 1, NN
             call distance(p, i, j, r)
             call energy_pair(r, E_pair)
@@ -186,16 +207,34 @@ subroutine energy(p, E)
         end do
     end do
 
-    ! エネルギーを二倍にする
-    E = 2 * E
-
 end subroutine energy
 
 ! 1粒子動かしたことによるエネルギー変化を計算するサブルーチン
 subroutine delta_energy(p, p_pre, number, dE)
     use parameter
     implicit none
+    integer :: i
+    double precision :: E_pair
+    type(particle), intent(in) :: p(NN), p_pre(NN)
+    integer, intent(in) :: number
+    double precision, intent(out) :: dE
 
+    ! dEの初期化
+    dE = 0.0d0
+
+    ! E変化の計算
+    do i = 1, NN
+        call distance(p, number, i, r)
+        call energy_pair(r, E_pair)
+        dE = dE + E_pair 
+
+        call distance(p_pre, number, i, r)
+        call energy_pair(r, E_pair)
+        dE = dE - E_pair
+
+    end do
+
+end subroutine delta_energy
 
 end program LJ_mc
 
