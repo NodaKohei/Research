@@ -5,18 +5,18 @@ module parameter
     ! 系のパラメータ
     integer, parameter :: NN = 108 ! 粒子数
     double precision, parameter :: length = 4.762d0 ! 箱のサイズ
-    double precision, parameter :: T = 3.0d0 ! 温度
+    double precision, parameter :: T = 0.5d0 ! 温度
 
     ! ちっこいパラメータ
     double precision, parameter :: eta_0 = 0.1d0 ! displacement coefficient
     double precision, parameter :: acp_value = 0.3 ! 受託率の目標値（これに向けて自動的にetaが変化していく）
     integer, parameter :: seed = 1 ! seed of random number
-    integer, parameter :: MC_sweeps = 1000 ! モンテカルロスウィープ数 １スウィープはNNとする
+    integer, parameter :: MC_sweeps = 10000 ! モンテカルロスウィープ数 １スウィープはNNとする
 
 
     ! 入出力に関するパラメータ(ファイル名)
     integer, parameter :: output_freq = 10 ! 出力頻度(何sweepに一回座標を出力する?)
-    character(64), parameter :: filepath = "./"
+    character(64), parameter :: filepath = "./output/"
     character(64), parameter :: filename = "coordinate.xyz"
     
 
@@ -57,6 +57,10 @@ program LJ_mc
 
     ! 初期エネルギーの計算
     call energy(p, E_new)
+    
+    ! 初期出力
+    open(40,file = "data.tsv", status = "replace")
+    write(40,*) "# sweep    Energy    eta"
 
     ! mainのループ
     do i = 1, MC_sweeps
@@ -101,17 +105,20 @@ program LJ_mc
             end if
 
         end do
-        ! 基本情報の書き出し
-        write(*,*) i, E_new, cnt, (1 - real(cnt)/real(NN)), eta
 
         ! eta修正
         eta = eta * exp(1 - real(cnt)/real(NN) - acp_value)
 
+        ! 各情報を出力する
+        write(40,*) i, E_new, eta
+
         ! 座標の書き出し
-        if (mod(i, output_freq) == 0) then 
+        if (mod(i, output_freq) == 0) then
+            write(*,*) "rest:", MC_sweeps - i 
             call output(p, filepath, filename)
         end if
     end do
+    close(40)
         
 contains
 
