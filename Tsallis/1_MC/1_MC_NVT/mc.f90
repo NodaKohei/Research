@@ -17,7 +17,8 @@ module parameter
     ! 入出力に関するパラメータ(ファイル名)
     integer, parameter :: output_freq = 10 ! 出力頻度(何sweepに一回座標を出力する?)
     character(64), parameter :: filepath = "./output/"
-    character(64), parameter :: filename = "coordinate.xyz"
+    character(64), parameter :: coordinate_file = "coordinate.xyz"
+    character(64), parameter :: data_file = "data.tsv"
     
 
 end module parameter
@@ -33,6 +34,7 @@ program LJ_mc
     integer :: cnt !count for acceptance ratio
     integer :: N_select
     double precision :: l, r, E_pre, E_new, E_pair, dE, eta
+    character(len=128) :: fname
 
     ! 粒子（構造体）
     type particle
@@ -50,7 +52,7 @@ program LJ_mc
     call initial(p)
 
     ! 初期配置出力
-    call output(p, filepath, filename)
+    call output(p, filepath, coordinate_file)
 
     ! 各種数値の初期設定
     eta = eta_0
@@ -59,7 +61,8 @@ program LJ_mc
     call energy(p, E_new)
     
     ! 初期出力
-    open(40,file = "data.tsv", status = "replace")
+    fname = TRIM(filepath)//TRIM(data_file)
+    open(40,file = fname, status = "replace")
     write(40,*) "# sweep    Energy    eta"
 
     ! mainのループ
@@ -115,7 +118,7 @@ program LJ_mc
         ! 座標の書き出し
         if (mod(i, output_freq) == 0) then
             write(*,*) "rest:", MC_sweeps - i 
-            call output(p, filepath, filename)
+            call output(p, filepath, coordinate_file)
         end if
     end do
     close(40)
